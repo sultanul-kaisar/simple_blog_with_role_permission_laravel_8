@@ -3,18 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
+
+    /**
+     * The database table used by the model.
+     *
+     * @var string
+     */
+    protected $table = 'users';
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +28,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'username',
         'password',
     ];
 
@@ -46,38 +51,20 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    public function comments()
+    /**
+     * Always encrypt password when it is updated.
+     *
+     * @param $value
+     * @return string
+     */
+    public function setPasswordAttribute($value)
     {
-        return $this->hasMany('App\Model\Comment');
+        $this->attributes['password'] = bcrypt($value);
     }
 
-    public function scopeNotRole(Builder $query, $roles, $guard = null): Builder
+
+    public function blogs()
     {
-        if ($roles instanceof Collection) {
-            $roles = $roles->all();
-        }
-
-        if (! is_array($roles)) {
-            $roles = [$roles];
-        }
-
-        $roles = array_map(function ($role) use ($guard) {
-            if ($role instanceof Role) {
-                return $role;
-            }
-
-            $method = is_numeric($role) ? 'findById' : 'findByName';
-            $guard = $guard ?: $this->getDefaultGuardName();
-
-            return $this->getRoleClass()->{$method}($role, $guard);
-        }, $roles);
-
-        return $query->whereHas('roles', function ($query) use ($roles) {
-            $query->where(function ($query) use ($roles) {
-                foreach ($roles as $role) {
-                    $query->where(config('permission.table_names.roles').'.id', '!=' , $role->id);
-                }
-            });
-        });
+        return $this->hasMany('App\Models\Blog');
     }
 }
